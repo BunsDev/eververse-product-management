@@ -22,15 +22,18 @@ export const POST = async (request: Request): Promise<Response> => {
     return new Response('No video or audio to transcribe', { status: 401 });
   }
 
-  const transcript = await createTranscript(
-    body.record.videoUrl ?? (body.record.audioUrl as string)
-  );
+  const audioUrl = body.record.videoUrl ?? (body.record.audioUrl as string);
+  const audio = await fetch(audioUrl);
+  const audioBlob = await audio.blob();
+  const audioFile = new File([audioBlob], 'audio.mp3', { type: 'audio/mp3' });
+
+  const transcript = await createTranscript(audioFile);
 
   await database.feedback.update({
     where: { id: body.record.id },
     data: {
       transcript,
-      content: textToContent(transcript.text ?? ''),
+      content: textToContent(transcript),
       transcribedAt: new Date(),
     },
     select: { id: true },
